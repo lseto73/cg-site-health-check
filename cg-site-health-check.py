@@ -5,7 +5,7 @@ CloudGenix script
 ---------------------------------------
 
 TODO: Jitter/Latency/Loss measurements per link
-TODO: Determin endpoint for service links (which zscaler node/prisma cloud)
+TODO: Determine endpoint for service links (which zscaler node/prisma cloud)
 TODO: Only Major and Critical alarms/alerts
 
 """
@@ -25,6 +25,16 @@ print_console = True
 print_pdf = False
 print_colors = True
 print_html = False
+P1 = "P1"
+H1 = "H1"
+H2 = "H2"
+B1 = "B1"
+B0 = "B0"
+T1 = "T1"
+style = "style"
+data = "data"
+theader = "header"
+boldfirst = "boldfirst"
 html_buffer = "<!DOCTYPE html><html>"
 last_style = ""
 
@@ -111,10 +121,14 @@ class dbbox:
     ul = u'\u2554'
     dc = u'\u2569'
     uc = u'\u2566'
+    ur = u'\u2557'
     lc = u'\u2560'
     u = u'\u2550'
     c = u'\u256c'
     l = u'\u2551'
+    rc = u'\u2563'
+    dr = u'\u255d'
+
 
 P1 = "P1"
 H1 = "H1"
@@ -123,6 +137,149 @@ B1 = "B1"
 B2 = "B2"
 END_SECTION = "END_SECTION"
 
+def true_len(input_str):
+    text = str(input_str)
+    if (type(input_str) == str):
+        text = text.replace(bcolors.HEADER, '')
+        text = text.replace(bcolors.OKBLUE, '')
+        text = text.replace(bcolors.OKGREEN, '')
+        text = text.replace(bcolors.WARNING, '')
+        text = text.replace(bcolors.FAIL, '')
+        text = text.replace(bcolors.BOLD, '')
+        text = text.replace(bcolors.UNDERLINE, '')
+        text = text.replace(bcolors.ENDC, '')
+        return len(text)
+    return len(input_str)
+
+
+def uprint(input_array):
+    first_item = True
+    last_item = False
+    last_style = "P1"
+    item_counter = 0
+    if print_console:    
+        for item in input_array:
+            item_counter += 1
+            if (item_counter == len(input_array)):
+                last_item = True
+            if (item['style'] == "P1"):
+                text = item['data']
+                item_len = true_len(text)
+                print( dbbox.ul + (dbbox.u*item_len) + dbbox.ur)
+                print( dbbox.l + pBold(text)+ dbbox.l)
+                print( dbbox.lc + (dbbox.u*item_len)+ dbbox.dr)
+            elif (item['style'] == "H1"):
+                if (last_style != "P1"):
+                    print(dbbox.l)
+                text = item['data'] 
+                item_len = true_len(text)
+                print(dbbox.l + dbbox.ul + (dbbox.u*item_len) + dbbox.ur)
+                print(dbbox.l + dbbox.l + pBold(text)+ dbbox.l)
+                print(dbbox.l + dbbox.lc + (dbbox.u*item_len)+ dbbox.dr)
+            elif (item['style'] == "H2"):
+                text = item['data'] 
+                item_len = true_len(text)
+                print(dbbox.l + dbbox.ul + (dbbox.u*item_len) + dbbox.ur)
+                print(dbbox.l + dbbox.l + pBold(text) + dbbox.l )
+                print(dbbox.l + dbbox.lc + (dbbox.u*item_len)+ dbbox.dr)
+            elif (item['style'] == "B1"):
+                text = item['data'] 
+                print(dbbox.l + dbbox.l + (text))
+            elif (item['style'] == "B0"):
+                text = item['data'] 
+                print(dbbox.l + (text))
+                
+            elif (item['style'] == "T1"):
+                if ("header" not in item.keys()):
+                    item['header'] = " "
+                if ("boldfirst" not in item.keys()):
+                    item['boldfirst'] = True
+                table_data = np.array(item['data'])
+                if (true_len(table_data.shape) != 2):
+                    print ("ERROR, non 2d square data passed to table print function")
+                    return False
+                table_column_lengths = []
+                for iterate in range(table_data.shape[1]):
+                    table_column_lengths.append(0)
+                for row in table_data:
+                    c_count = 0
+                    for column in row:
+                        mytype = type(column)
+                        if ("str" in str(type(column)) ):
+                            if (true_len(str(column)) > table_column_lengths[c_count]):
+                                table_column_lengths[c_count] = true_len(str(column))
+                        else:
+                            if (true_len(str(column)) > table_column_lengths[c_count]):
+                                table_column_lengths[c_count] = true_len(str(column))
+                        c_count += 1
+                if (sum(table_column_lengths) < true_len(item['header'])):
+                    extra_column_divider_counts = (true_len(table_column_lengths) - 2)
+                    len_sum_of_data = sum(table_column_lengths)
+                    header_len = true_len(item['header'])
+                    addition = (header_len - len_sum_of_data) - extra_column_divider_counts
+                    table_column_lengths[0] += addition - 1
+                    
+                    header_len = true_len(item['header'])
+                    table_width = header_len ##width without edge borders
+                else:
+                    extra_column_divider_counts = (true_len(table_column_lengths)) - 1
+                    len_sum_of_data = sum(table_column_lengths)
+                    header_len = len_sum_of_data + extra_column_divider_counts
+                    table_width = header_len ##width without edge borders
+                if ((item['header'] != " ")):
+                    print(dbbox.l + dbbox.ul + (dbbox.u*table_width) + dbbox.ur )
+                    added_padding = len(str(item['header'])) - true_len(str(item['header']))
+                    justified_header = str(item['header']).ljust(table_width + added_padding)
+                    print(dbbox.l + dbbox.l + pBold(justified_header)  + dbbox.l)
+                    
+                    ###print header trailer
+                    print(dbbox.l + dbbox.lc, end = "")
+                    for iterate in range(table_data.shape[1]):
+                        print((dbbox.u * table_column_lengths[iterate]), end = '')
+                        c_count += 1
+                        if (iterate == table_data.shape[1] - 1):
+                            print(dbbox.rc)
+                        else:
+                            print(dbbox.uc, end="")
+                else:
+                    print(dbbox.l + dbbox.ul + (dbbox.u*table_width) + dbbox.ur )
+                #print data
+                r_count = 0
+                for row in table_data:
+                    print(dbbox.l + dbbox.l, end = "")
+                    c_count = 0
+                    is_first = True
+                    for column in row:
+                        added_padding = len(str(column)) - true_len(str(column))
+                        if is_first:
+                            print( pBold(
+                                str(column).ljust(table_column_lengths[c_count] + added_padding)), end = '')
+                            
+                            is_first = False
+                        else:
+                            print(  
+                                str(column).rjust(table_column_lengths[c_count] + added_padding), end = '')
+                        c_count += 1
+                        if (true_len(row) == c_count): #is this last?
+                            if (r_count == table_data.shape[1]):
+                                print(dbbox.rc)
+                            else:
+                                print(dbbox.l)
+                        else:
+                            print(dbbox.l, end="")
+                #print trailer
+                print(dbbox.l + dbbox.dl, end = "")
+                for iterate in range(table_data.shape[1]):
+                    print((dbbox.u * table_column_lengths[iterate]),end = '')
+                    if (iterate == table_data.shape[1] - 1):
+                        print(dbbox.dr)
+                    else:
+                        print(dbbox.dc, end='')
+                    c_count += 1
+                    ###########END of TABLE PRINTER #######
+            last_style = item['style']
+            if (last_item):
+                print(dbbox.dl + (dbbox.u*item_len))
 
 def vprint(text, style="B1"):
     global last_style
@@ -197,72 +354,79 @@ def parse_arguments():
     args = parser.parse_args()
     CLIARGS.update(vars(args)) ##ASSIGN ARGUMENTS to our DICT
 def authenticate():
-    vprint("Authenticating",H1)
-    
+    print_array = []
+    print_array.append({ style: P1, data: "Authentication"})
     user_email = None
     user_password = None
     
+    print_array.append({ style: H1, data: "Checking Authentication Method"})
     ##First attempt to use an AuthTOKEN if defined
     if CLIARGS['token']:                    #Check if AuthToken is in the CLI ARG
         CLOUDGENIX_AUTH_TOKEN = CLIARGS['token']
-        vprint("Authenticating using Auth-Token in from CLI ARGS", B1)
+        print_array.append({ style: B1, data: "Using " + pBold("AUTH TOKEN") + " from CLI argument parameter"})
     elif CLIARGS['authtokenfile']:          #Next: Check if an AuthToken file is used
         tokenfile = open(CLIARGS['authtokenfile'])
         CLOUDGENIX_AUTH_TOKEN = tokenfile.read().strip()
-        vprint("Authenticating using Auth-token from file: " + pUnderline(CLIARGS['authtokenfile']), B1)
+        print_array.append({ style: B1, data: "Using " + pBold("AUTH TOKEN FILE") + " from " + pUnderline(CLIARGS['authtokenfile']) })
     elif "X_AUTH_TOKEN" in os.environ:              #Next: Check if an AuthToken is defined in the OS as X_AUTH_TOKEN
         CLOUDGENIX_AUTH_TOKEN = os.environ.get('X_AUTH_TOKEN')
-        vprint("Authenticating using environment variable X_AUTH_TOKEN", B1)
+        print_array.append({ style: B1, data: "Using " + pBold("X_AUTH_TOKEN") + " from environment variable in shell"})
     elif "AUTH_TOKEN" in os.environ:                #Next: Check if an AuthToken is defined in the OS as AUTH_TOKEN
         CLOUDGENIX_AUTH_TOKEN = os.environ.get('AUTH_TOKEN')
-        vprint("Authenticating using environment variable AUTH_TOKEN", B1)
+        print_array.append({ style: B1, data: "Using " + pBold("AUTH_TOKEN") + " from environment variable in shell"})
     else:                                           #Next: If we are not using an AUTH TOKEN, set it to NULL        
         CLOUDGENIX_AUTH_TOKEN = None
-        vprint("Authenticating using interactive login", B1)
+        print_array.append({ style: B1, data: "Attempting Interactive Login..."})
     ##ATTEMPT AUTHENTICATION
     if CLOUDGENIX_AUTH_TOKEN:
         cgx_session.interactive.use_token(CLOUDGENIX_AUTH_TOKEN)
         if cgx_session.tenant_id is None:
-            vprint(pFail("ERROR") + ": AUTH_TOKEN login failure, please check token.", B1)
+            print_array.append({ style: T1, data: [ [ pFail("ERROR") , "AUTH_TOKEN login failure, please check token." ]]})
+            uprint(print_array)
             sys.exit()
     else:
+        uprint(print_array)
         while cgx_session.tenant_id is None:
             cgx_session.interactive.login(user_email, user_password)
             # clear after one failed login, force relogin.
             if not cgx_session.tenant_id:
                 user_email = None
                 user_password = None            
-    vprint(pPass("SUCCESS") + ": Authentication Complete", B1)
-    vprint(END_SECTION)
+    print_array.clear()
+    print_array.append({ style: P1, data: "Authentication Result"})
+    print_array.append({ style: T1, data: [ [ pPass("SUCCESS") , "Authentication Completed Successfully" ]]})
+    uprint(print_array)
+
 
 def go():
-    global html_buffer
     idname =  cloudgenix_idname.CloudGenixIDName(cgx_session)
     vpnpaths_id_to_name = idname.generate_anynets_map()
-    
+    print_array = []
 
-    #keyname_dict = cloudgenix_idname.generate_id_name_map(cgx_session, reverse=True)
-
-    ####CODE GOES BELOW HERE#########
+    #########   START: TENANT INFORMATION  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "TENANT Information"})
     resp = cgx_session.get.tenants()
     if resp.cgx_status:
         tenant_name = resp.cgx_content.get("name", None)
-        vprint("TENANT NAME: " + pUnderline(tenant_name), "H1")
-        
+        print_array.append({ style: B0, data: pBold("Tenant Name") + ": " + pUnderline(tenant_name)  })
     else:
         logout()
-        vprint(pFail("ERROR") + ": API Call failure when enumerating TENANT Name! Exiting!", P1)
+        print_array.append({ style: B0, data: pFail("ERROR") + ": " + pUnderline("API Call failure when enumerating TENANT Name! Exiting!")  })
         print(resp.cgx_status)
         sys.exit((vars(resp)))
+    uprint(print_array)
 
     site_count = 0
     search_site = CLIARGS['site_name']
     search_ratio = 0
     site_name = ""
     site_id = ""
-
-
-    ###FIND the site in question
+    #########   END: TENANT INFORMATION  #########
+    
+    #########   START: SITE MATCH  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "SITE Information"})
     resp = cgx_session.get.sites()
     if resp.cgx_status:
         site_list = resp.cgx_content.get("items", None)    #EVENT_LIST contains an list of all returned events
@@ -272,44 +436,53 @@ def go():
                 site_id = site['id']
                 site_name = site['name']
                 search_ratio = check_ratio
-                
+                site_dict = site
     else:
         logout()
-        vprint(pFail("ERROR") + "API Call failure when enumerating SITES in tenant! Exiting!", P1)
+        print_array.append({ style: B0, data: pFail("ERROR") + ": " + pUnderline("API Call failure when enumerating SITES in tenant! Exiting!")  })
+        uprint(print_array)
         sys.exit((jd(resp)))
-
-    vprint("Health Check for SITE: '" + pUnderline(pBold(site_name)) + "' SITE ID: " + pBold(site_id), B1)
-    vprint(END_SECTION)
-
-    ###Check if elements are online
+    print_array.append({ style: T1, theader: "Health Check for SITE: '" + pUnderline(pBold(site_name)), data: [ [ "Site ID" , site_dict['id'] ],
+                                                                                                                [ "Status"  , site_dict["admin_state"] ],
+                                                                                                                [ "Description"  , site_dict["description"] ],
+                                                                                                                [ "Address"  , site_dict["address"]["street"] + ", " + site_dict["address"]["city"] +  " " + site_dict["address"]["state"] +   ", " + site_dict["address"]["post_code"]  ],
+                                                                                                                [ "Role"  , site_dict["element_cluster_role"] ],
+                                                                                                              ]   })
+    uprint(print_array)
+    #########   END: SITE INFORMATION  #########
+    
+    #########   START: ELEMENT INFORMATION  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "ELEMENT Information"})
     site_elements = []
+    ion_print_array = []
     element_count = 0
     resp = cgx_session.get.elements()
     if resp.cgx_status:
-        
-        vprint("ION Status for site", H1)
-        
+        print_array.append({ style: H1, data: "ION Status for site"})
         element_list = resp.cgx_content.get("items", None)    #EVENT_LIST contains an list of all returned events
-        
         if (len(element_list) >= 0):
             for element in element_list:                            #Loop through each EVENT in the EVENT_LIST
                 if (element['site_id'] == site_id):
                     element_count += 1
                     site_elements.append(element['id'])
-                    if (element_count > 1):
-                        print(dbbox.l)
-                    vprint("ION found NAME: " + pBold(str(element['name'])) + " ION ID: " + pBold(str(element['id'])), B1)
                     if (element['connected'] == True):
-                        vprint("ION Status: " + pPass("CONNECTED"), B2)
+                        ion_status = pPass("CONNECTED")
                     else:
-                        vprint("ION Status: " + pFail("OFFLINE (!!!)"), B2)
+                        ion_status = pFail("OFFLINE")
+                    print_array.append({ style: T1, theader: "ION: " + pUnderline(element['name']), data: [ [ "Element ID" , element['id'] ],
+                                                                                                                [ "Status"  , ion_status ],
+                                                                                                              ]   })
         if (element_count == 0):
-            vprint("ION Status: " + pBold("No IONS for site found"), B1)
-        vprint(END_SECTION)
+            print_array.append({ style: B1, data: "No IONS for site found"})
+        uprint(print_array)
+    #########   END: ELEMENT INFORMATION  #########
     
-    ################### ALARMS ###################
+    #########   START: ALARMS INFORMATION  #########
     ### Get last 5 ALARMS for last diff_hours hours
-    
+    print_array.clear()
+    print_array.append({ style: P1, data: "ALARMS Information"})
+
     dt_now = str(datetime.now().isoformat())
     dt_start = str((datetime.today() - timedelta(hours=diff_hours)).isoformat())
     dt_yesterday = str((datetime.today() - timedelta(hours=48)).isoformat())
@@ -317,31 +490,36 @@ def go():
     event_filter = '{"limit":{"count":5,"sort_on":"time","sort_order":"descending"},"view":{"summary":false},"severity":[],"query":{"site":["' + site_id + '"],"category":[],"code":[],"correlation_id":[],"type":["alarm"]}, "start_time": "' + dt_start + '", "end_time": "'+ dt_now + '"}'
     resp = cgx_session.post.events_query(event_filter)
     if resp.cgx_status:
-        vprint("Last 5 Alarms for site within the past "+ str(diff_hours) +" hours", H1)
-        
+        print_array.append( { style: H1, data: "Last 5 ALARMS for site within the past " + str(diff_hours) + " hours"} )
         alarms_list = resp.cgx_content.get("items", None)
         if(len(alarms_list) == 0 ):
-            vprint("No Alarms found in the past " + str(diff_hours) + " hours",B1)
+            print_array.append( { style: B1, data: "No ALARMS found in time period" } )
         else:
             for alarm in alarms_list:
-                vprint("ALARM: " + str(alarm['code']),B1)
-                vprint("Acknowledged: " + str(alarm['cleared']),B2)
-                if (alarm['severity'] == "minor"):
-                    vprint("Severity    : " + pWarn(str(alarm['severity'])),B2)
-                elif (alarm['severity'] == "major"):
-                    vprint("Severity    : " + pFail(str(alarm['severity'])),B2)
+                if ( str(alarm['cleared']) == "True") :
+                    acknowledged = pPass(str(alarm['cleared']))
                 else:
-                    vprint("Severity    : " + str(alarm['severity']),B2)
-                vprint("Timestamp   : " + str(alarm['time']),B2)
+                    acknowledged = pFail(str(alarm['cleared']))
+                ###Color code Severity
+                if (alarm['severity'] == "minor"):
+                    severity = pWarn(str(alarm['severity']))
+                elif (alarm['severity'] == "major"):
+                    severity = pFail(str(alarm['severity']))
+                else:
+                    severity = pPass(str(alarm['severity']))
+                print_array.append({ style: T1, theader: "ALARM: " + pUnderline(str(alarm['code'])), data:[ [ "Timestamp" , str(alarm['time']) ],
+                                                                                                            [ "Severity"  , severity ],
+                                                                                                            [ "Acknowledged"  , acknowledged ],
+                                                                                                              ]   })
     else:
-        vprint(pFail("ERROR in SCRIPT. Could not get ALARMS"),B1)
+        print_array.append({ style: B1, data: pFail("ERROR in SCRIPT. Could not get ALARMS") })
 
     ### Get SUMMARY ALARMS  for last diff_hours hours
     alarm_summary_dict = {}
     event_filter = '{"limit":{"count":1000,"sort_on":"time","sort_order":"descending"},"view":{"summary":false},"severity":[],"query":{"site":["' + site_id + '"],"category":[],"code":[],"correlation_id":[],"type":["alarm"]}, "start_time": "' + dt_start + '", "end_time": "'+ dt_now + '"}'
     resp = cgx_session.post.events_query(event_filter)
     if resp.cgx_status:
-        vprint("Alarm Summaries for the past " + pUnderline( str(diff_hours)) + pBold(" hours"), H2)
+        print_array.append({ style: H1, data: "ALARM Summaries for the past "+ str(diff_hours) + " hours"})
         alarms_list = resp.cgx_content.get("items", None)
         if(len(alarms_list) > 0 ):
             for alarm in alarms_list:
@@ -350,51 +528,61 @@ def go():
                else:
                    alarm_summary_dict[alarm['code']] = 1
             for alarm_code in alarm_summary_dict.keys():
-                vprint("CODE: " + str(alarm_code), B1 )
-                vprint("TOTAL Count: " + pUnderline(str(alarm_summary_dict[alarm_code])), B2)
+                print_array.append({ style: B1, data: "Summaries for ALARM: " + pUnderline( str(alarm_code) ) })
+                print_array.append({ style: B1, data: "              Count: " + pUnderline(str(alarm_summary_dict[alarm_code])) })
+                print_array.append({ style: B1, data: " " })
+                
         else:
-            vprint("No Alarm summaries", B1 )
+            print_array.append({ style: B1, data: "No ALARM summaries found" })
     else:
-        vprint(pFail("ERROR in SCRIPT. Could not get ALARMS"),B1)
-    vprint(END_SECTION)
+        print_array.append({ style: B1, data: pFail("ERROR in SCRIPT. Could not get ALARM SUMMARIES") })
+    uprint(print_array)
+    #########   END: ALARMS INFORMATION  #########
+    
 
-    ################### ALERTS ###################
+    #########   START: ALERTS INFORMATION  #########
     ### Get last 5 ALERTS for last diff_hours hours
+    print_array.clear()
+    print_array.append({ style: P1, data: "ALERTS Information"})
     event_filter = '{"limit":{"count":5,"sort_on":"time","sort_order":"descending"},"view":{"summary":false},"severity":[],"query":{"site":["' + site_id + '"],"category":[],"code":[],"correlation_id":[],"type":["alert"]}, "start_time": "' + dt_start + '", "end_time": "'+ dt_now + '"}'
     resp = cgx_session.post.events_query(event_filter)
     if resp.cgx_status:
-        vprint("Last 5 Alerts for site within the past "+ str(diff_hours) +" hours", H1)
-        
+        print_array.append( { style: H1, data: "Last 5 ALERTS for site within the past " + str(diff_hours) + " hours"} )
         alerts_list = resp.cgx_content.get("items", None)
         if(len(alerts_list) == 0 ):
-            vprint("No Alerts found", B1)
+            print_array.append( { style: B1, data: "No ALERTS found in time period" } )
         else:
+            alert_array_data = []
             for alert in alerts_list:
-                vprint("ALERT CODE: " + pBold(str(alert['code'])), B1 )
+                alert_array_data.clear()
                 if ( 'reason' in alert['info'].keys()):
-                    vprint("REASON    : " + str(alert['info']['reason']), B2)
+                    alert_array_data.append( [  "Reason", str(alert['info']['reason'])  ]  )
                 if ( 'process_name' in alert['info'].keys()):
-                    vprint("PROCESS   : " + str(alert['info']['process_name']), B2)
+                    alert_array_data.append( [  "Process", str(alert['info']['process_name'])  ]  )
                 if ( 'detail' in alert['info'].keys()):
-                    vprint("DETAIL    : " + str(alert['info']['detail']), B2)
+                    alert_array_data.append( [  "Details", str(alert['info']['detail'])  ]  )
+                
+                ##severity color coding
                 if (alert['severity'] == "minor"):
-                    vprint("SEVERITY  : " + pWarn(str(alert['severity'])), B2)
+                    alert_severity = pWarn(str(alert['severity']))
                 elif (alert['severity'] == "major"):
-                    vprint("SEVERITY  : " + pFail(str(alert['severity'])), B2)
+                    alert_severity = pFail(str(alert['severity']))
                 else:
-                    vprint("SEVERITY  : " + (str(alert['severity'])), B2)
-                vprint("TIMESTAMP : " + str(alert['time']), B2)
+                    alert_severity = pPass(str(alert['severity']))
+                    
+                alert_array_data.append( [  "Severity", alert_severity  ]  )
+                alert_array_data.append( [  "Timestamp", str(alert['time'])  ]  )
+                
+                print_array.append({ style: T1, theader: "ALARM: " + pUnderline(str(alert['code'])), data:[ alert_array_data ]   })
     else:
-        vprint("ERROR in SCRIPT. Could not get Alerts")
+        print_array.append({ style: B1, data: pFail("ERROR in SCRIPT. Could not get ALERTS") })
 
     ### Get ALERTS summary for last diff_hours hours
     alert_summary_dict = {}
     event_filter = '{"limit":{"count":1000,"sort_on":"time","sort_order":"descending"},"view":{"summary":false},"severity":[],"query":{"site":["' + site_id + '"],"category":[],"code":[],"correlation_id":[],"type":["alert"]}, "start_time": "' + dt_start + '", "end_time": "'+ dt_now + '"}'
     resp = cgx_session.post.events_query(event_filter)
     if resp.cgx_status:
-        vprint("Alert Summaries for the past " + pUnderline( str(diff_hours)) + pBold(" hours"), H1)
-        
-
+        print_array.append({ style: H1, data: "ALERT Summaries for the past "+ str(diff_hours) + " hours"})
         alerts_list = resp.cgx_content.get("items", None)
         if(len(alerts_list) > 0 ):
             for alert in alerts_list:
@@ -403,14 +591,20 @@ def go():
                else:
                    alert_summary_dict[alert['code']] = 1
             for alert_code in alert_summary_dict.keys():
-                vprint("CODE: " + str(alert_code), B1 )
-                vprint("TOTAL Count: " + pUnderline(str(alert_summary_dict[alert_code])), B2)
+                print_array.append({ style: B1, data: "Summaries for ALARM: " + pUnderline( str(alert_code) ) })
+                print_array.append({ style: B1, data: "              Count: " + pUnderline(str(alert_summary_dict[alert_code])) })
+                print_array.append({ style: B1, data: " " })
         else:
-            vprint("No Alarm summaries",B1 )
+            print_array.append({ style: B1, data: "No ALERT summaries found" })
     else:
-        vprint(pFail("ERROR in SCRIPT. Could not get Alerts"), B1)
-    vprint(END_SECTION)
+        print_array.append({ style: B1, data: pFail("ERROR in SCRIPT. Could not get ALERT SUMMARIES") })
+    uprint(print_array)
+    #########   END: ALERTS INFORMATION  #########
 
+
+    
+
+    ###Generate NAME ID MAPS
     elements_id_to_name = idname.generate_elements_map()
     site_id_to_name = idname.generate_sites_map()
     wan_label_id_to_name = idname.generate_waninterfacelabels_map()
@@ -419,48 +613,60 @@ def go():
     wan_interfaces_resp = cgx_session.get.waninterfaces(site_id)
     wan_interfaces_list = wan_interfaces_resp.cgx_content.get("items")
 
-    ### GET  LINKS status (VPN/PHYS)
+    #########   START: VPN LINK INFORMATION  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "VPN Status"})
     topology_filter = '{"type":"basenet","nodes":["' +  site_id + '"]}'
     resp = cgx_session.post.topology(topology_filter)
     if resp.cgx_status:
         topology_list = resp.cgx_content.get("links", None)
-        vprint("VPN STATUS",H1) 
         vpn_count = 0 
         for links in topology_list:
-
             if ((links['type'] == 'vpn') and links['source_site_name'] == site_name):
                 vpn_count += 1
-                #print(dbbox.l + format(vpnpaths_id_to_name.get(links['path_id'], links['path_id'])))
-                vprint("VPN " + str(vpn_count) + "-> SITE:" + site_name + " [ION:" + elements_id_to_name[links['source_node_id']] + "]" + " ---> "+  wan_if_id_to_name[links['source_wan_if_id']] + ":" + links['source_wan_network'] 
-                       + " " +  (dbbox.u*3) + (dbbox.c) + (dbbox.u*3) + " " + links['target_wan_network'] + ":" + wan_if_id_to_name[links['target_wan_if_id']] + " <--- [" +  elements_id_to_name[links['target_node_id']] + "] " + links['target_site_name'], B1)
+                vpn_text = "VPN " + str(vpn_count) + "-> SITE:" + site_name + " [ION:" + elements_id_to_name[links['source_node_id']]
+                vpn_text += "]" + " ---> "+  wan_if_id_to_name[links['source_wan_if_id']] + ":" + links['source_wan_network'] + " " 
+                vpn_text += str(dbbox.u*3) + str(dbbox.c) + str(dbbox.u*3) + " " + links['target_wan_network'] + ":"
+                vpn_text += wan_if_id_to_name[links['target_wan_if_id']] + " <--- [" +  elements_id_to_name[links['target_node_id']]
+                vpn_text += "] " + links['target_site_name']
+                print_array.append({ style: H1, data: vpn_text } )
                 if (links['status'] == "up"):
-                    vprint("STATUS: " + pPass("UP"),B2)
+                    print_array.append({ style: B1, data: "STATUS: " + pPass("UP") })
                 else:
-                    vprint("STATUS: " + pFail("DOWN"), B2)
+                    print_array.append({ style: B1, data: "STATUS: " + pFail("DOWN") })
+
+                if(('in_use' in links.keys()) and (links['in_use'])):
+                    print_array.append({ style: B1, data: "USAGE : " + pPass("IN USE") })
+                else:
+                    print_array.append({ style: B1, data: "USAGE : " + pWarn("INACTIVE") })
+                
+                ###TODO add JITTER LATENCY PACKET-LOSS MEASUREMENTS HERE
         if (vpn_count == 0):
-            vprint("No SDWAN VPN links found at site",B1)
-        vprint(END_SECTION)
+            print_array.append({ style: B1, data: "No SDWAN VPN links found at site" })
+        uprint(print_array)
+        #########   END: VPN LINK INFORMATION  #########
         
-         
+        #########   START: INTERNET PHYSICAL LINK INFORMATION  #########
+        print_array.clear()
+        print_array.append({ style: P1, data: "PHYSICAL LINK Status"})
         pcm_metrics_array_up = []  
-        pcm_metrics_array_down = []  
-        vprint("PHYSICAL LINK STATUS",P1)
+        pcm_metrics_array_down = []          
         stub_count = 0
         for links in topology_list:
-            if ((links['type'] == 'internet-stub')):
+            if ((links['type'] == 'internet-stub') ):
                 stub_count += 1
                 if ('target_circuit_name' in links.keys()):
-                    vprint("Physical LINK: " + pBold(str(links['network'])) + ":" + pUnderline(str(links['target_circuit_name'])),H1 )
+                    print_array.append({ style: P1, data: "Physical LINK: " + pBold(str(links['network'])) + ":" + pUnderline(str(links['target_circuit_name'])) })
                 else:
-                    vprint("Physical LINK: " + pBold(str(links['network'])),H1 )                    
+                    print_array.append({ style: P1, data: "Physical LINK: " + pBold(str(links['network'])) })
                 if (links['status'] == "up"):
-                    vprint("STATUS: " + pPass("UP"), B2)
+                    print_array.append({ style: B1, data: "STATUS: " + pPass("UP") })
                 elif (links['status'] == "init"):
-                    vprint("STATUS: " + pWarn("INIT"), B2)
+                    print_array.append({ style: B1, data: "STATUS: " + pWarn("INIT") })
                 else:
-                    vprint("STATUS: " + pFail("DOWN"),B2)
-                
-                ###PCM BANDWIDTH CAPACITY MEASUREMENTS
+                    print_array.append({ style: B1, data: "STATUS: " + pFail("DOWN") })
+
+                ### PCM PHY BANDWIDTH CAPACITY MEASUREMENTS
                 pcm_request = '{"start_time":"'+ dt_start + 'Z","end_time":"' + dt_now + 'Z","interval":"5min","view":{"summary":false,"individual":"direction"},"filter":{"site":["' + site_id + '"],"path":["' + links['path_id'] + '"]},"metrics":[{"name":"PathCapacity","statistics":["average"],"unit":"Mbps"}]}'
                 pcm_resp = cgx_session.post.metrics_monitor(pcm_request)
                 pcm_metrics_array_up.clear()
@@ -477,7 +683,7 @@ def go():
                         if direction == "Download":                            
                             for datapoint in series['data'][0]['datapoints']:
                                 if (datapoint['value'] == None):
-                                    #pcm_metrics_array_down.append(0)
+                                    #pcm_metrics_array_down.append(0) ###IGNORE VALUES which are explicitly ZERO as it means no data - Per Aaron
                                     z_count_down += 1
                                 else:
                                     pcm_metrics_array_down.append(datapoint['value'])
@@ -486,58 +692,159 @@ def go():
                         else:
                             for datapoint in series['data'][0]['datapoints']:                                
                                 if (datapoint['value'] == None):
-                                    #pcm_metrics_array_up.append(0)
+                                    #pcm_metrics_array_down.append(0) ###IGNORE VALUES which are explicitly ZERO as it means no data - Per Aaron
                                     z_count_up += 1
                                 else:
                                     pcm_metrics_array_up.append(datapoint['value'])
                                     measurements_up += 1
                             direction = 'Download'
 
-                    vprint("Configured Bandwidth/Throughput for the site")
-                    
                     for wan_int in wan_interfaces_list:
                         if wan_int['id'] == links['path_id']:
                             upload = wan_int['link_bw_up']
                             download = wan_int['link_bw_down']
-                            vprint("Maximum BW Download : " + str(wan_int['link_bw_down']),B2)
-                            vprint("Maximum BW Upload   : " + str(wan_int['link_bw_up']),B2)
-                    
+                            print_array.append({ style: T1, theader: "Configured Bandwidth/Throughput for the site", data:[ 
+                                                                                                            [ "Maximum BW Download" , str(wan_int['link_bw_down']) ],
+                                                                                                            [ "Maximum BW Upload" , str(wan_int['link_bw_up'])   ],
+                                                                                                                            ]   })
                     error_percentage = 0.1
                     warn_percentage = 0.05
-                    vprint("Measured Link Capacity (PCM) STATS for the last 24 hours", H2)
-                    vprint("THRESHOLDS: "+ pFail("RED") + ">=" + (str(error_percentage*100)) + "% |  "+pWarn("YELLOW") + ">=" + (str(warn_percentage*100)) + "%  | "+ pPass("GREEN") + "=Within " + (str(warn_percentage*100)) + "% | " + pExceptional("BLUE") + "="+ (str(error_percentage*100*2)) + "% Above expected",B1)
-
-                    vprint("Upload - Calculated from " + str(len(pcm_metrics_array_up)) + " Measurements in the past 24 Hours in mbits", H2)
+                    print_array.append({ style: H2, data: "THRESHOLDS: "+ pFail("RED") + ">=" + (str(error_percentage*100)) + "% |  "+pWarn("YELLOW") + ">=" + (str(warn_percentage*100)) + "%  | "+ pPass("GREEN") + "=Within " + (str(warn_percentage*100)) + "% | " + pExceptional("BLUE") + "="+ (str(error_percentage*100*2)) + "% Above expected" })
+                    
+                    print_array.append({ style: H2, data: "Measured Link Capacity (PCM) STATS for the last 24 hours" })
+                    
                     if (len(pcm_metrics_array_up) == 0):
                         pcm_metrics_array_up.append(0)
                     if (len(pcm_metrics_array_down) == 0):
                         pcm_metrics_array_down.append(0)
                     
                     np_array = np.array(pcm_metrics_array_up)
-                    
-                    vprint("Zeros:" + str(z_count_up), B1)
-                    vprint("25th percentile      : " + metric_classifier( round(np.percentile(np_array,25),3),upload,error_percentage,warn_percentage),B1)
-                    vprint("50th Percentile(AVG) : " + metric_classifier( round(np.average(np_array),3),upload,error_percentage,warn_percentage),B1)
-                    vprint("75th percentile      : " + metric_classifier( round(np.percentile(np_array,75),3),upload,error_percentage,warn_percentage),B1)
-                    vprint("95th percentile      : " + metric_classifier( round(np.percentile(np_array,95),3),upload,error_percentage,warn_percentage),B1)
-                    vprint("Max Value            : " + metric_classifier( round(np.amax(np_array),3),upload,error_percentage,warn_percentage),B1)
-                    
-                    vprint("Download - Calculated from " + str(len(pcm_metrics_array_down)) + " Measurements in the past 24 Hours", H2)
+                    print_array.append({ style: T1, theader: "Upload - Calculated from " + str(len(pcm_metrics_array_up)) + " Measurements in the past 24 Hours in mbits", data:[ 
+                        [ "25th percentile",        metric_classifier( round(np.percentile(np_array,25),3),upload,error_percentage,warn_percentage) ],
+                        ["50th Percentile(AVG)",    metric_classifier( round(np.average(np_array),3),upload,error_percentage,warn_percentage)       ],
+                        ["75th percentile"     ,    metric_classifier( round(np.percentile(np_array,75),3),upload,error_percentage,warn_percentage) ],
+                        ["95th percentile"      ,   metric_classifier( round(np.percentile(np_array,95),3),upload,error_percentage,warn_percentage) ],
+                        ["Max Value"        ,       metric_classifier( round(np.amax(np_array),3),upload,error_percentage,warn_percentage)          ],
+                                                ] })
                     
                     np_array = np.array(pcm_metrics_array_down)
-                    #vprint("Zeros:" + str(z_count_down), B1)
-                    vprint("25th percentile      : " + metric_classifier( round(np.percentile(np_array,25),3),download,error_percentage,warn_percentage),B1)
-                    vprint("50th Percentile(AVG) : " + metric_classifier( round(np.average(np_array),3),download,error_percentage,warn_percentage),B1)
-                    vprint("75th percentile      : " + metric_classifier( round(np.percentile(np_array,75),3),download,error_percentage,warn_percentage),B1)
-                    vprint("95th percentile      : " + metric_classifier( round(np.percentile(np_array,95),3),download,error_percentage,warn_percentage),B1)
-                    vprint("Max Value            : " + metric_classifier( round(np.amax(np_array),3),download,error_percentage,warn_percentage),B1)
-                vprint(END_SECTION)
-                    
-
+                    print_array.append({ style: T1, theader: "Download - Calculated from " + str(len(pcm_metrics_array_down)) + " Measurements in the past 24 Hours in mbits", data:[ 
+                        [ "25th percentile",        metric_classifier( round(np.percentile(np_array,25),3),download,error_percentage,warn_percentage) ],
+                        ["50th Percentile(AVG)",    metric_classifier( round(np.average(np_array),3),download,error_percentage,warn_percentage)       ],
+                        ["75th percentile"     ,    metric_classifier( round(np.percentile(np_array,75),3),download,error_percentage,warn_percentage) ],
+                        ["95th percentile"      ,   metric_classifier( round(np.percentile(np_array,95),3),download,error_percentage,warn_percentage) ],
+                        ["Max Value"        ,       metric_classifier( round(np.amax(np_array),3),download,error_percentage,warn_percentage)          ],
+                                                ] })
+            
         if (stub_count == 0):
-            vprint("No Physical links found at site", B1)
-            vprint(END_SECTION)
+            print_array.append({ style: H2, data: "No Physical links found at site" })
+        uprint(print_array)
+        #########   END: INTERNET PHYSICAL LINK INFORMATION  #########
+
+
+        #########   START: Private-ANYNET PWAN LINK INFORMATION  #########
+        print_array.clear()
+        print_array.append({ style: P1, data: "Private-WAN LINK Status"})
+        pcm_metrics_array_up = []  
+        pcm_metrics_array_down = []          
+        stub_count = 0
+        for links in topology_list:
+            if ((links['type'] == 'private-anynet') ):
+                stub_count += 1
+                if (links['target_site_name'] == site_name):
+                    pwan_print_data = "PrivateWAN LINK: " + pBold(str(links['target_circuit_name'])) + ":" + pUnderline(str(links['target_wan_network'])) + "  ==>  " + pBold(str(links['source_circuit_name'])) + ":" + pUnderline(str(links['source_wan_network'])) + " (" + pBold(str(links['source_site_name'])) + ")"
+                    pwan_link_filter = links['target_wan_if_id']
+                else:
+                     
+                    pwan_print_data = "PrivateWAN LINK: " + pBold(str(links['source_circuit_name'])) + ":" + pUnderline(str(links['source_wan_network'])) + "  ==>  " + pBold(str(links['target_circuit_name'])) + ":" + pUnderline(str(links['target_wan_network'])) + " (" + pBold(str(links['target_site_name'])) + ")"
+                    pwan_link_filter = links['source_wan_if_id']
+
+                print_array.append({ style: P1, data:  pwan_print_data  })
+                
+                if (links['status'] == "up"):
+                    print_array.append({ style: B1, data: "STATUS: " + pPass("UP") })
+                elif (links['status'] == "init"):
+                    print_array.append({ style: B1, data: "STATUS: " + pWarn("INIT") })
+                else:
+                    print_array.append({ style: B1, data: "STATUS: " + pFail("DOWN") })
+
+                ### PCM PHY BANDWIDTH CAPACITY MEASUREMENTS
+                pcm_request = '{"start_time":"'+ dt_start + 'Z","end_time":"' + dt_now + 'Z","interval":"5min","view":{"summary":false,"individual":"direction"},"filter":{"site":["' + site_id + '"],"path":["' + links['target_wan_if_id'] + '"]},"metrics":[{"name":"PathCapacity","statistics":["average"],"unit":"Mbps"}]}'
+                pcm_resp = cgx_session.post.metrics_monitor(pcm_request)
+                pcm_metrics_array_up.clear()
+                pcm_metrics_array_down.clear()
+                measurements_up = 0
+                measurements_down = 0
+                z_count_down = 0
+                z_count_up = 0
+                if pcm_resp.cgx_status:
+                    pcm_metric = pcm_resp.cgx_content.get("metrics", None)[0]['series']
+                    if pcm_metric[0]['view']['direction'] == 'Ingress':
+                        direction = "Download"
+                    for series in pcm_metric:
+                        if direction == "Download":                            
+                            for datapoint in series['data'][0]['datapoints']:
+                                if (datapoint['value'] == None):
+                                    #pcm_metrics_array_down.append(0) ###IGNORE VALUES which are explicitly ZERO as it means no data - Per Aaron
+                                    z_count_down += 1
+                                else:
+                                    pcm_metrics_array_down.append(datapoint['value'])
+                                    measurements_down += 1
+                            direction = 'Upload'
+                        else:
+                            for datapoint in series['data'][0]['datapoints']:                                
+                                if (datapoint['value'] == None):
+                                    #pcm_metrics_array_down.append(0) ###IGNORE VALUES which are explicitly ZERO as it means no data - Per Aaron
+                                    z_count_up += 1
+                                else:
+                                    pcm_metrics_array_up.append(datapoint['value'])
+                                    measurements_up += 1
+                            direction = 'Download'
+
+                    for wan_int in wan_interfaces_list:
+                        if wan_int['id'] == pwan_link_filter: #links['path_id']:
+                            upload = wan_int['link_bw_up']
+                            download = wan_int['link_bw_down']
+                            print_array.append({ style: T1, theader: "Configured Bandwidth/Throughput for the site", data:[ 
+                                                                                                            [ "Maximum BW Download" , str(wan_int['link_bw_down']) ],
+                                                                                                            [ "Maximum BW Upload" , str(wan_int['link_bw_up'])   ],
+                                                                                                                            ]   })
+                    error_percentage = 0.1
+                    warn_percentage = 0.05
+                    print_array.append({ style: H2, data: "THRESHOLDS: "+ pFail("RED") + ">=" + (str(error_percentage*100)) + "% |  "+pWarn("YELLOW") + ">=" + (str(warn_percentage*100)) + "%  | "+ pPass("GREEN") + "=Within " + (str(warn_percentage*100)) + "% | " + pExceptional("BLUE") + "="+ (str(error_percentage*100*2)) + "% Above expected" })
+                    
+                    print_array.append({ style: H2, data: "Measured Link Capacity (PCM) STATS for the last 24 hours" })
+                    
+                    if (len(pcm_metrics_array_up) == 0):
+                        pcm_metrics_array_up.append(0)
+                    if (len(pcm_metrics_array_down) == 0):
+                        pcm_metrics_array_down.append(0)
+                    
+                    np_array = np.array(pcm_metrics_array_up)
+                    print_array.append({ style: T1, theader: "Upload - Calculated from " + str(len(pcm_metrics_array_up)) + " Measurements in the past 24 Hours in mbits", data:[ 
+                        [ "25th percentile",        metric_classifier( round(np.percentile(np_array,25),3),upload,error_percentage,warn_percentage) ],
+                        ["50th Percentile(AVG)",    metric_classifier( round(np.average(np_array),3),upload,error_percentage,warn_percentage)       ],
+                        ["75th percentile"     ,    metric_classifier( round(np.percentile(np_array,75),3),upload,error_percentage,warn_percentage) ],
+                        ["95th percentile"      ,   metric_classifier( round(np.percentile(np_array,95),3),upload,error_percentage,warn_percentage) ],
+                        ["Max Value"        ,       metric_classifier( round(np.amax(np_array),3),upload,error_percentage,warn_percentage)          ],
+                                                ] })
+                    
+                    np_array = np.array(pcm_metrics_array_down)
+                    print_array.append({ style: T1, theader: "Download - Calculated from " + str(len(pcm_metrics_array_down)) + " Measurements in the past 24 Hours in mbits", data:[ 
+                        [ "25th percentile",        metric_classifier( round(np.percentile(np_array,25),3),download,error_percentage,warn_percentage) ],
+                        ["50th Percentile(AVG)",    metric_classifier( round(np.average(np_array),3),download,error_percentage,warn_percentage)       ],
+                        ["75th percentile"     ,    metric_classifier( round(np.percentile(np_array,75),3),download,error_percentage,warn_percentage) ],
+                        ["95th percentile"      ,   metric_classifier( round(np.percentile(np_array,95),3),download,error_percentage,warn_percentage) ],
+                        ["Max Value"        ,       metric_classifier( round(np.amax(np_array),3),download,error_percentage,warn_percentage)          ],
+                                                ] })
+                    print_array.append({ style: B0, data: " " })
+            
+        if (stub_count == 0):
+            print_array.append({ style: H2, data: "No Private-WAN links found at site" })
+        uprint(print_array)
+        #########   END: Private-ANYNET PHYSICAL LINK INFORMATION  #########
         
+
         vprint("3RD PARTY LINK STATUS",H1)
         service_link_count = 0
         for links in topology_list:
@@ -551,8 +858,8 @@ def go():
         if (service_link_count == 0):
             vprint("No 3rd party VPN tunnels found",B1)
         vprint(END_SECTION)
-        
-        
+    
+    
     #######DNS RESPONSE TIME:
     app_name_map = {}    
     app_name_map = idname.generate_appdefs_map(key_val="display_name", value_val="id")
