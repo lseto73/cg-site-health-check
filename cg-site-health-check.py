@@ -5,7 +5,7 @@ CloudGenix script
 ---------------------------------------
 
 TODO: Jitter/Latency/Loss measurements per link
-TODO: Determine endpoint for service links (which zscaler node/prisma cloud)
+TODO: Determin endpoint for service links (which zscaler node/prisma cloud)
 TODO: Only Major and Critical alarms/alerts
 
 """
@@ -769,7 +769,7 @@ def go():
                     print_array.append({ style: B1, data: "STATUS: " + pFail("DOWN") })
 
                 ### PCM PHY BANDWIDTH CAPACITY MEASUREMENTS
-                pcm_request = '{"start_time":"'+ dt_start + 'Z","end_time":"' + dt_now + 'Z","interval":"5min","view":{"summary":false,"individual":"direction"},"filter":{"site":["' + site_id + '"],"path":["' + links['target_wan_if_id'] + '"]},"metrics":[{"name":"PathCapacity","statistics":["average"],"unit":"Mbps"}]}'
+                pcm_request = '{"start_time":"'+ dt_start + 'Z","end_time":"' + dt_now + 'Z","interval":"5min","view":{"summary":false,"individual":"direction"},"filter":{"site":["' + site_id + '"],"path":["' + pwan_link_filter + '"]},"metrics":[{"name":"PathCapacity","statistics":["average"],"unit":"Mbps"}]}'
                 pcm_resp = cgx_session.post.metrics_monitor(pcm_request)
                 pcm_metrics_array_up.clear()
                 pcm_metrics_array_down.clear()
