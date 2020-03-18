@@ -5,7 +5,7 @@ CloudGenix script
 ---------------------------------------
 
 TODO: Jitter/Latency/Loss measurements per link
-TODO: Determin endpoint for service links (which zscaler node/prisma cloud)
+TODO: Determine endpoint for service links (which zscaler node/prisma cloud)
 TODO: Only Major and Critical alarms/alerts
 
 """
@@ -21,21 +21,40 @@ import json
 from lxml import html
 import cloudgenix_idname
 
-print_console = True
-print_pdf = False
+###SYSTEM DEFAULTS
+print_mode = "console"
+print_borders = True
 print_colors = True
-print_html = False
+
+T1 = "T1"
 P1 = "P1"
 H1 = "H1"
 H2 = "H2"
-B1 = "B1"
 B0 = "B0"
-T1 = "T1"
+B1 = "B1"
+
+class slack_formatter:
+    P1_header = "P1"
+    H1_header = "H1"
+    H2_header = "H2"
+    B0_header = "B0"
+    B1_header = "B1"
+    T1_header = "T1"
+    P1_footer = "P1"
+    H1_footer = "H1"
+    H2_footer = "H2"
+    B0_footer = "B0"
+    B1_footer = "B1"
+    T1_footer = "T1"
+
+
 style = "style"
 data = "data"
 theader = "header"
 boldfirst = "boldfirst"
-html_buffer = "<!DOCTYPE html><html>"
+html_buffer = '<!DOCTYPE html><html><meta charset="utf-8"><title>CloudGenix Site Health Check</title><br>'
+slack_buffer = ' {"blocks": [ { "type": "section", "text": { "type": "mrkdwn", "text": "*CloudGenix Site Health Check*" }, "accessory": {"type": "image","image_url": "https://www.cloudgenix.com/wp-content/uploads/2017/12/CloudGenix_GRD_CLR_RGB-800.png","alt_text": "CloudGenix"}} '
+
 last_style = ""
 
 dns_trt_thresholds = {
@@ -64,38 +83,72 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def convert_style_html(text):
-    text = text.replace(bcolors.HEADER, '</div><div style="font-weight: bold; display: inline-block; ">')
-    text = text.replace(bcolors.OKBLUE, '</div><div style="text-decoration-color: blue; display: inline-block;">')
-    text = text.replace(bcolors.OKGREEN, '</div><div style="text-decoration-color: GREEN; display: inline-block;">')
-    text = text.replace(bcolors.WARNING, '</div><div style="text-decoration-color: yellow; display: inline-block;;">')
-    text = text.replace(bcolors.FAIL, '</div><div style="text-decoration-color: RED; display: inline-block;">')
-    
-
-    text = text.replace(bcolors.BOLD, '</div><div style="font-weight: bold; display: inline-block;">')
-    text = text.replace(bcolors.UNDERLINE, '</div><div style="text-decoration: underline; display: inline-block;">')
-
-    text = text.replace(bcolors.ENDC, '</div>')
-
-    if not(str(text).startswith("<div>")):
-        text = '<div style="display: inline-block;">' + text
-    if not(str(text).endswith("</div>")):
-        text = text + "</div>"
-    return(text)
-    
-
 def pBold(str_to_print):
-    return(bcolors.BOLD + str_to_print + bcolors.ENDC)
+    global print_mode
+    if(print_colors):
+        if (print_mode == "slack"):
+            return(str_to_print)
+        if (print_mode == "html"):
+            return(str_to_print)
+        if (print_mode == "console"):    
+            return(bcolors.BOLD + str_to_print + bcolors.ENDC)
+    return(str_to_print) ###UKNOWN PRINT MODE
+
 def pFail(str_to_print):
-    return(bcolors.FAIL + str_to_print + bcolors.ENDC)
+    global print_mode
+    if(print_colors):
+        if (print_mode == "slack"):
+            return(":x:" + str_to_print )
+        if (print_mode == "html"):
+            return(str_to_print)
+        if (print_mode == "console"):    
+            return(bcolors.FAIL + str_to_print + bcolors.ENDC)
+    return(str_to_print) ###UKNOWN PRINT MODE
+
 def pPass(str_to_print):
-    return(bcolors.OKGREEN + str_to_print + bcolors.ENDC)
+    global print_mode
+    if(print_colors):
+        if (print_mode == "slack"):
+            return(":white_check_mark:" + str_to_print )
+        if (print_mode == "html"):
+            return(str_to_print)
+        if (print_mode == "console"):    
+            return(bcolors.OKGREEN + str_to_print + bcolors.ENDC)
+    return(str_to_print) ###UKNOWN PRINT MODE
+
 def pWarn(str_to_print):
-    return(bcolors.WARNING + str_to_print + bcolors.ENDC)
+    global print_mode
+    if(print_colors):
+        if (print_mode == "slack"):
+            return(":warning:" + str_to_print )
+        if (print_mode == "html"):
+            return(str_to_print)
+        if (print_mode == "console"):    
+            return(bcolors.WARNING + str_to_print + bcolors.ENDC)
+    return(str_to_print) ###UKNOWN PRINT MODE
+
 def pExceptional(str_to_print):
-    return(bcolors.OKBLUE + str_to_print + bcolors.ENDC)
+    global print_mode
+    if(print_colors):
+        if (print_mode == "slack"):
+            return(":small_blue_diamond:" + str_to_print )
+        if (print_mode == "html"):
+            return(str_to_print)
+        if (print_mode == "console"):    
+            return(bcolors.OKBLUE + str_to_print + bcolors.ENDC)
+    return(str_to_print) ###UKNOWN PRINT MODE
+    
 def pUnderline(str_to_print):
-    return(bcolors.UNDERLINE + str_to_print + bcolors.ENDC)
+    global print_mode
+    if(print_colors):
+        if (print_mode == "slack"):
+            return(str_to_print)
+        if (print_mode == "html"):
+            return(str_to_print)
+        if (print_mode == "console"):    
+            return(bcolors.UNDERLINE + str_to_print + bcolors.ENDC)
+    return(str_to_print) ###UKNOWN PRINT MODE
+
 def dns_trt_classifier(dns_trt_time):
     if( dns_trt_time > dns_trt_thresholds['fail']):
         return pFail(str(dns_trt_time))
@@ -103,6 +156,7 @@ def dns_trt_classifier(dns_trt_time):
         return pWarn(str(dns_trt_time))
     else:
         return pPass(str(dns_trt_time))
+
 def metric_classifier(value, expected, error_percentage_as_decimal, warn_percentage_as_decimal=0.05):
     if (value < (expected - ( expected * error_percentage_as_decimal ) )):
         return pFail(str(value))
@@ -115,8 +169,7 @@ def metric_classifier(value, expected, error_percentage_as_decimal, warn_percent
     
     return pWarn(str(value))
     
-
-class dbbox:
+class border_char_class:
     dl = u'\u255a'
     ul = u'\u2554'
     dc = u'\u2569'
@@ -129,13 +182,32 @@ class dbbox:
     rc = u'\u2563'
     dr = u'\u255d'
 
+class low_res_border_char_class:
+    dl = '*'
+    ul = '+'
+    dc = '+'
+    uc = '+'
+    ur = '+'
+    lc = '+'
+    u = '-'
+    c = '+'
+    l = '|'
+    rc = '+'
+    dr = '+'
 
-P1 = "P1"
-H1 = "H1"
-H2 = "H2"
-B1 = "B1"
-B2 = "B2"
-END_SECTION = "END_SECTION"
+
+class blank_border_char_class:
+    dl = ' '
+    ul = ' '
+    dc = ' '
+    uc = ' '
+    ur = ' '
+    lc = ' '
+    u = ' '
+    c = ' '
+    l = ' '
+    rc = ' '
+    dr = ' '
 
 def true_len(input_str):
     text = str(input_str)
@@ -151,18 +223,26 @@ def true_len(input_str):
         return len(text)
     return len(input_str)
 
-
 def uprint(input_array):
     first_item = True
     last_item = False
-    last_style = "P1"
+    global last_style
+    global print_mode
     item_counter = 0
-    if print_console:    
+    if (print_mode == "console"):    
+        global print_borders
+        if (print_borders):
+            dbbox = border_char_class
+        else:
+            dbbox = low_res_border_char_class
+
         for item in input_array:
             item_counter += 1
             if (item_counter == len(input_array)):
                 last_item = True
             if (item['style'] == "P1"):
+                if (last_style != ""):
+                    print(" ")
                 text = item['data']
                 item_len = true_len(text)
                 print( dbbox.ul + (dbbox.u*item_len) + dbbox.ur)
@@ -280,56 +360,116 @@ def uprint(input_array):
             last_style = item['style']
             if (last_item):
                 print(dbbox.dl + (dbbox.u*item_len))
-
-def vprint(text, style="B1"):
-    global last_style
-    global html_buffer
-    if print_colors == False:
-        for color in filter(lambda a: not a.startswith('__'), dir(bcolors())):
-            text = text.replace(getattr(bcolors,color),"")
-    if print_console == True:
-        if (text == "END_SECTION"):
-            print(dbbox.dl + (dbbox.u*20))
-            print(" ")
-        elif (style == "P1"):
-            print(dbbox.ul + (dbbox.u*20))
-            print(dbbox.l + pBold(text))
-            print(dbbox.dl + (dbbox.u*20))
-        elif (style == "H1"):
-            print(dbbox.ul + (dbbox.u*20))
-            print(dbbox.l + pBold(text))
-            print(dbbox.lc + (dbbox.u*20))
-        elif (style == "H2"):
-            print(dbbox.lc + (dbbox.u*20))
-            print(dbbox.l + pBold(text))
-            print(dbbox.lc + (dbbox.u*20))
-        elif (style == "B1"):
-            print(dbbox.l + text)
-        elif (style == "B2"):
-            print(dbbox.l + " " + text)
-
-    if (print_pdf == True):
-        pass
-    if (print_html == True):
-        if (text == "END_SECTION"):
-            html_buffer += "</div>"
-        else:
-            #html_buffer += '<div style="display:inline">'
-            html_buffer += '<div style="display: inline-block">'
-            if style == "B1":
-                style == "BODY"
-            if style == "B2":
-                style == "UL"
-            if (last_style != style and last_style != ""): ###NEW STYLE
-                html_buffer += "</" + str(last_style) + ">"
-                html_buffer += "<" + str(style) + ">"
-                html_buffer += "<" + str(style) + ">"
-                last_style = style
-            html_buffer += str(convert_style_html(text))
-            html_buffer += '</div></br>'
-
-
-
+    if (print_mode == "html"):
+        global html_buffer
+        for item in input_array:
+            if (item['style'] == "P1"):
+                text = item['data'] 
+                html_buffer += '<br><h1>' + text + '</h1>'
+            elif (item['style'] == "H1"):
+                text = item['data'] 
+                html_buffer += '<h1>' + text + '</h1>'
+            elif (item['style'] == "H2"):
+                text = item['data'] 
+                html_buffer += '<h2>' + text + '</h2>'
+            elif (item['style'] == "B1"):
+                text = item['data'] 
+                html_buffer += '<body>' + text + '</body>'
+            elif (item['style'] == "B0"):
+                text = item['data'] 
+                html_buffer += '<h3>' + text + '</h3>'
+            elif (item['style'] == "T1"):
+                if(type(item['data']) == list): ###TBLEHEADER HERE
+                    for rows in item[data]:
+                        if(type(item['data']) == list):
+                            for cell in rows:
+                                text = cell
+                                html_buffer += "asdad"
+                else:
+                    html_buffer += '<body>' + str(item['data']) + '</body>'
+                print(text)
+    if (print_mode == "slack"):
+        slack_bullet = "• "
+        slack_linebreak = "\\r\\n"
+        dbbox = blank_border_char_class
+        global slack_buffer
+        slack_buffer += ',{"type": "divider"}'
+        item_counter = 0 
+        for item in input_array:
+            item_counter += 1
+            if (item['style'] == "P1"):
+                text = item['data'] 
+                slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": ":heavy_minus_sign:*' + text + '*:heavy_minus_sign:"}} \r\n'
+            elif (item['style'] == "H1"):
+                text = item['data'] 
+                slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": "*' + text + '*"}} \r\n'
+            elif (item['style'] == "H2"):
+                text = item['data'] 
+                slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": "' + text + '"}} \r\n'
+            elif (item['style'] == "B1"):
+                text = item['data'] 
+                slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": "' + text + '"}} \r\n'
+            elif (item['style'] == "B0"):
+                text = item['data'] 
+                slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": "_' + text + '_"}} \r\n'
+            elif (item['style'] == "T1"): ###SLACK TABLE PRINTER
+                if ("header" not in item.keys()):
+                    item['header'] = " "
+                if ("boldfirst" not in item.keys()):
+                    item['boldfirst'] = True
+                table_data = np.array(item['data'])
+                if (true_len(table_data.shape) != 2):
+                    print ("ERROR, non 2d square data passed to table print function")
+                    return False
+                table_column_lengths = []
+                for iterate in range(table_data.shape[1]):
+                    table_column_lengths.append(0)
+                for row in table_data:
+                    
+                    c_count = 0
+                    for column in row:
+                        mytype = type(column)
+                        if ("str" in str(type(column)) ):
+                            if (true_len(str(column)) > table_column_lengths[c_count]):
+                                table_column_lengths[c_count] = true_len(str(column))
+                        else:
+                            if (true_len(str(column)) > table_column_lengths[c_count]):
+                                table_column_lengths[c_count] = true_len(str(column))
+                        c_count += 1
+                if (sum(table_column_lengths) < true_len(item['header'])):
+                    extra_column_divider_counts = (true_len(table_column_lengths) - 2)
+                    len_sum_of_data = sum(table_column_lengths)
+                    header_len = true_len(item['header'])
+                    addition = (header_len - len_sum_of_data) - extra_column_divider_counts
+                    table_column_lengths[0] += addition - 1
+                    
+                    header_len = true_len(item['header'])
+                    table_width = header_len ##width without edge borders
+                else:
+                    extra_column_divider_counts = (true_len(table_column_lengths)) - 1
+                    len_sum_of_data = sum(table_column_lengths)
+                    header_len = len_sum_of_data + extra_column_divider_counts
+                    table_width = header_len ##width without edge borders
+                if ((item['header'] != " ")):
+                    added_padding = len(str(item['header'])) - true_len(str(item['header']))
+                    justified_header = str(item['header']).ljust(table_width + added_padding)
+                    slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": "```'
+                    
+                    slack_buffer += justified_header + slack_linebreak
+                else:
+                    slack_buffer += ',{	"type": "section","text": {"type": "mrkdwn","text": "```'
+                #print data
+                r_count = 0
+                for row in table_data:
+                    c_count = 0
+                    is_first = True
+                    for column in row:
+                        added_padding = len(str(column)) + 2 - true_len(str(column))
+                        slack_buffer += "\\t" + ( str(column).ljust(table_column_lengths[c_count] + added_padding)) + "\\t"
+                        c_count += 1
+                        if (true_len(row) == c_count): #is this last?
+                            slack_buffer += slack_linebreak
+                slack_buffer += '```"}} \r\n'
 
 def getpanstatus(webcontent, str_service):
     services_list = webcontent.xpath('//*[@data-component-id="' + str_service + '"]/span')
@@ -351,8 +491,31 @@ def parse_arguments():
                     help='a file containing the authtoken')
     parser.add_argument('--site-name', '-s', metavar='SiteName', type=str, 
                     help='The site to run the site health check for', required=True)
+    parser.add_argument('--no-colors', '-c',   action="store_true",
+                    help='disable colors and fonts')
+    parser.add_argument('--no-borders', '-b',   action="store_true",
+                    help='disable ascii borders')
+    parser.add_argument('--print-mode', '-p', metavar='print_mode', type=str, 
+                    help='The output mode [ console | html | slack ]  Default:console', default="console")
     args = parser.parse_args()
     CLIARGS.update(vars(args)) ##ASSIGN ARGUMENTS to our DICT
+    global print_mode
+    global print_borders
+    global print_colors
+    if (CLIARGS['no_colors']):
+        print_colors = False
+    if (CLIARGS['no_borders']):
+        print_borders = False
+    if (CLIARGS['print_mode']):
+        if (CLIARGS['print_mode'] == "slack"):      
+            print_mode = "slack" 
+            print_borders = False
+            print_colors = False
+        if (CLIARGS['print_mode'] == "html"):       
+            print_mode = "html"
+        if (CLIARGS['print_mode'] == "console"):    
+            print_mode = "console"
+
 def authenticate():
     print_array = []
     print_array.append({ style: P1, data: "Authentication"})
@@ -397,8 +560,10 @@ def authenticate():
     print_array.append({ style: T1, data: [ [ pPass("SUCCESS") , "Authentication Completed Successfully" ]]})
     uprint(print_array)
 
-
 def go():
+    global print_mode
+    global slack_buffer
+    
     idname =  cloudgenix_idname.CloudGenixIDName(cgx_session)
     vpnpaths_id_to_name = idname.generate_anynets_map()
     print_array = []
@@ -442,7 +607,7 @@ def go():
         print_array.append({ style: B0, data: pFail("ERROR") + ": " + pUnderline("API Call failure when enumerating SITES in tenant! Exiting!")  })
         uprint(print_array)
         sys.exit((jd(resp)))
-    print_array.append({ style: T1, theader: "Health Check for SITE: '" + pUnderline(pBold(site_name)), data: [ [ "Site ID" , site_dict['id'] ],
+    print_array.append({ style: T1, theader: "Health Check for SITE: " + pUnderline(pBold(site_name)), data: [ [ "Site ID" , site_dict['id'] ],
                                                                                                                 [ "Status"  , site_dict["admin_state"] ],
                                                                                                                 [ "Description"  , site_dict["description"] ],
                                                                                                                 [ "Address"  , site_dict["address"]["street"] + ", " + site_dict["address"]["city"] +  " " + site_dict["address"]["state"] +   ", " + site_dict["address"]["post_code"]  ],
@@ -539,7 +704,6 @@ def go():
     uprint(print_array)
     #########   END: ALARMS INFORMATION  #########
     
-
     #########   START: ALERTS INFORMATION  #########
     ### Get last 5 ALERTS for last diff_hours hours
     print_array.clear()
@@ -601,9 +765,6 @@ def go():
     uprint(print_array)
     #########   END: ALERTS INFORMATION  #########
 
-
-    
-
     ###Generate NAME ID MAPS
     elements_id_to_name = idname.generate_elements_map()
     site_id_to_name = idname.generate_sites_map()
@@ -626,7 +787,7 @@ def go():
                 vpn_count += 1
                 vpn_text = "VPN " + str(vpn_count) + "-> SITE:" + site_name + " [ION:" + elements_id_to_name[links['source_node_id']]
                 vpn_text += "]" + " ---> "+  wan_if_id_to_name[links['source_wan_if_id']] + ":" + links['source_wan_network'] + " " 
-                vpn_text += str(dbbox.u*3) + str(dbbox.c) + str(dbbox.u*3) + " " + links['target_wan_network'] + ":"
+                vpn_text += pBold("---+--- ") + links['target_wan_network'] + ":"
                 vpn_text += wan_if_id_to_name[links['target_wan_if_id']] + " <--- [" +  elements_id_to_name[links['target_node_id']]
                 vpn_text += "] " + links['target_site_name']
                 print_array.append({ style: H1, data: vpn_text } )
@@ -656,9 +817,9 @@ def go():
             if ((links['type'] == 'internet-stub') ):
                 stub_count += 1
                 if ('target_circuit_name' in links.keys()):
-                    print_array.append({ style: P1, data: "Physical LINK: " + pBold(str(links['network'])) + ":" + pUnderline(str(links['target_circuit_name'])) })
+                    print_array.append({ style: H1, data: "Physical LINK: " + pBold(str(links['network'])) + ":" + pUnderline(str(links['target_circuit_name'])) })
                 else:
-                    print_array.append({ style: P1, data: "Physical LINK: " + pBold(str(links['network'])) })
+                    print_array.append({ style: H1, data: "Physical LINK: " + pBold(str(links['network'])) })
                 if (links['status'] == "up"):
                     print_array.append({ style: B1, data: "STATUS: " + pPass("UP") })
                 elif (links['status'] == "init"):
@@ -735,31 +896,32 @@ def go():
                         ["95th percentile"      ,   metric_classifier( round(np.percentile(np_array,95),3),download,error_percentage,warn_percentage) ],
                         ["Max Value"        ,       metric_classifier( round(np.amax(np_array),3),download,error_percentage,warn_percentage)          ],
                                                 ] })
-            
         if (stub_count == 0):
             print_array.append({ style: H2, data: "No Physical links found at site" })
         uprint(print_array)
         #########   END: INTERNET PHYSICAL LINK INFORMATION  #########
 
-
         #########   START: Private-ANYNET PWAN LINK INFORMATION  #########
         print_array.clear()
         print_array.append({ style: P1, data: "Private-WAN LINK Status"})
         pcm_metrics_array_up = []  
-        pcm_metrics_array_down = []          
+        pcm_metrics_array_down = []    
+        pwan_interfaces_completed = []      
         stub_count = 0
         for links in topology_list:
-            if ((links['type'] == 'private-anynet') ):
+            if ((links['type'] == 'private-anynet') and (links['target_circuit_name'] not in pwan_interfaces_completed) and (links['source_circuit_name'] not in pwan_interfaces_completed) ):
                 stub_count += 1
                 if (links['target_site_name'] == site_name):
-                    pwan_print_data = "PrivateWAN LINK: " + pBold(str(links['target_circuit_name'])) + ":" + pUnderline(str(links['target_wan_network'])) + "  ==>  " + pBold(str(links['source_circuit_name'])) + ":" + pUnderline(str(links['source_wan_network'])) + " (" + pBold(str(links['source_site_name'])) + ")"
+                    pwan_print_data = "PrivateWAN LINK: " + pBold(str(links['target_circuit_name'])) + " (" + pUnderline(str(links['target_wan_network'])) + ")" 
                     pwan_link_filter = links['target_wan_if_id']
+                    pwan_interfaces_completed.append(links['target_circuit_name'])
                 else:
                      
-                    pwan_print_data = "PrivateWAN LINK: " + pBold(str(links['source_circuit_name'])) + ":" + pUnderline(str(links['source_wan_network'])) + "  ==>  " + pBold(str(links['target_circuit_name'])) + ":" + pUnderline(str(links['target_wan_network'])) + " (" + pBold(str(links['target_site_name'])) + ")"
+                    pwan_print_data = "PrivateWAN LINK: " + pBold(str(links['source_circuit_name'])) + " (" + pUnderline(str(links['source_wan_network'])) + ")" 
                     pwan_link_filter = links['source_wan_if_id']
+                    pwan_interfaces_completed.append(links['source_circuit_name'])
 
-                print_array.append({ style: P1, data:  pwan_print_data  })
+                print_array.append({ style: H1, data:  pwan_print_data  })
                 
                 if (links['status'] == "up"):
                     print_array.append({ style: B1, data: "STATUS: " + pPass("UP") })
@@ -844,23 +1006,25 @@ def go():
         uprint(print_array)
         #########   END: Private-ANYNET PHYSICAL LINK INFORMATION  #########
         
-
-        vprint("3RD PARTY LINK STATUS",H1)
+        #########   START: 3rd party VPN LINK INFORMATION  #########
+        print_array.clear()
+        print_array.append({ style: P1, data: "3rd Party VPN Link Status"})
         service_link_count = 0
         for links in topology_list:
             if ((links['type'] == 'servicelink')):
                 service_link_count += 1
-                vprint("3RD PARTY LINK: " + pBold(str(links['sep_name'])) + " VIA WAN " + pUnderline(str(links['wan_nw_name'])),B1 )
                 if (links['status'] == "up"):
-                    vprint("STATUS: " + pPass("UP"),B2)
+                    print_array.append({ style: T1, theader: "3RD PARTY LINK: " + pBold(str(links['sep_name'])) + " VIA WAN " + pUnderline(str(links['wan_nw_name'])) , data:   [   ["STATUS", pPass("UP")]  ] })
                 else:
-                    vprint("STATUS: " + pFail("DOWN"),B2)
+                    print_array.append({ style: T1, theader: "3RD PARTY LINK: " + pBold(str(links['sep_name'])) + " VIA WAN " + pUnderline(str(links['wan_nw_name'])) , data:   [   ["STATUS", pFail("DOWN")]  ] })
         if (service_link_count == 0):
-            vprint("No 3rd party VPN tunnels found",B1)
-        vprint(END_SECTION)
-    
-    
-    #######DNS RESPONSE TIME:
+            print_array.append({ style: B1, data: "No 3rd party VPN tunnels found"})
+        uprint(print_array)
+        #########   START: 3rd party VPN LINK INFORMATION  #########
+        
+    #########   START: DNS RESPONSE TIME  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "DNS Response Time Metrics (TRT)"})
     app_name_map = {}    
     app_name_map = idname.generate_appdefs_map(key_val="display_name", value_val="id")
     if ("dns" in app_name_map.keys()):
@@ -876,16 +1040,16 @@ def go():
                 else:
                     dns_trt_array.append(datapoint['value'])
             
-            vprint("DNS TRT STATS", H1)
-            vprint("Stats for past 24 hours",H2)
-            
-
             np_array = np.array(dns_trt_array)
-            vprint("Min             : " + dns_trt_classifier( round(np.amin(np_array),2)),B1)
-            vprint("average         : " + dns_trt_classifier( round(np.average(np_array),2)),B1)
-            vprint("80th percentile : " + dns_trt_classifier( round(np.percentile(np_array,80),2)),B1)
-            vprint("95th percentile : " + dns_trt_classifier( round(np.percentile(np_array,95),2)),B1)
-            vprint("Max Value       : " + dns_trt_classifier( round(np.amax(np_array),2) ),B1)
+            
+            print_array.append({ style: T1, theader: "DNS TRT Stats for the past 24 Hours (in milliseconds)", data:[ 
+                        ["Minimum",                 dns_trt_classifier( round(np.amin(np_array),2)) ],
+                        ["Average",                 dns_trt_classifier( round(np.average(np_array),2))       ],
+                        ["80th percentile"     ,    dns_trt_classifier( round(np.percentile(np_array,80),2)) ],
+                        ["95th percentile"      ,   dns_trt_classifier( round(np.percentile(np_array,95),2)) ],
+                        ["Max Value"        ,       dns_trt_classifier( round(np.amax(np_array),2))          ],
+                                                ] })
+
 
             ### Get stats from 48 hours ago
             dns_request = '{"start_time":"' + dt_yesterday + 'Z","end_time":"'+ dt_start + 'Z","interval":"5min","metrics":[{"name":"AppUDPTransactionResponseTime","statistics":["average"],"unit":"milliseconds"}],"view":{},"filter":{"site":["' + site_id + '"],"app":["' + dns_app_id + '"],"path_type":["DirectInternet","VPN","PrivateVPN","PrivateWAN","ServiceLink"]}}'
@@ -897,48 +1061,56 @@ def go():
                     dns_trt_array.append(0)
                 else:
                     dns_trt_array.append(datapoint['value'])
-
-            vprint("Stats from Yesterday",H2)
-        
             np_array_yesterday = np.array(dns_trt_array)
-            vprint("Min             : " + dns_trt_classifier( round(np.amin(np_array_yesterday),2)),B1)
-            vprint("average         : " + dns_trt_classifier( round(np.average(np_array_yesterday),2)),B1)
-            vprint("80th percentile : " + dns_trt_classifier( round(np.percentile(np_array_yesterday,80),2)),B1)
-            vprint("95th percentile : " + dns_trt_classifier( round(np.percentile(np_array_yesterday,95),2)),B1)
-            vprint("Max Value       : " + dns_trt_classifier( round(np.amax(np_array_yesterday),2)),B1)
-    else:
-        vprint(pFail("ERROR: DNS APPLICATION NOT FOUND"),B1)
-    vprint(END_SECTION)
+            
+            print_array.append({ style: T1, theader: "DNS TRT Stats from Yesterday (in milliseconds)", data: [ 
+                        ["Minimum",                 dns_trt_classifier( round(np.amin(np_array_yesterday),2)) ],
+                        ["Average",                 dns_trt_classifier( round(np.average(np_array_yesterday),2))       ],
+                        ["80th percentile"     ,    dns_trt_classifier( round(np.percentile(np_array_yesterday,80),2)) ],
+                        ["95th percentile"      ,   dns_trt_classifier( round(np.percentile(np_array_yesterday,95),2)) ],
+                        ["Max Value"        ,       dns_trt_classifier( round(np.amax(np_array_yesterday),2))          ],
+                                                ] })
+            
 
-    ###Get PAN STATUS
+    else:
+        print_array.append({ style: B1, data: pFail("ERROR") + " Could not retrieve DNS TRT STATS"})
+    uprint(print_array)
+    #########   END: DNS RESPONSE TIME  #########
+    
+    #########   START: Get Palo Alto Prisma Status  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "Palo Alto Networks Cloud Status}"})
     pan_core_services_url = 'https://status.paloaltonetworks.com/'
     pan_health_request = requests.get(url = pan_core_services_url)
     pan_tree_data = html.fromstring(pan_health_request.content)
-    
-    vprint("Palo Alto Prisma Cloud STATUS from: " + pUnderline(pan_core_services_url), H1)
+    pan_svc_array = []
     
     for service in pan_service_dict:
         service_status = getpanstatus(pan_tree_data, pan_service_dict[service] )
         if (service_status == "Operational"):
-            vprint("SERVICE: " + service + "            STATUS: " + pPass(service_status), B1)
+            pan_svc_array.append([ service , pPass(service_status) ])
         else:
-            vprint("SERVICE: " + service + "            STATUS: " + pFail(service_status), B1)
-    vprint(END_SECTION)
-
-    ###Get zScaler STATUS
+            pan_svc_array.append([ service , pFail(service_status) ])
+    if (len(pan_svc_array) >= 1):
+        pan_svc_array.insert(0, [pUnderline("SERVICE"),pUnderline("STATUS")] )
+        print_array.append({ style: T1, theader: "Palo Alto Prisma Cloud STATUS from: " + pUnderline(pan_core_services_url), data: pan_svc_array })
+    else:
+        print_array.append({ style: B1, data:  "No Palo Alto Services Found" })
+    uprint(print_array)
+    #########   END: Get Palo Alto Prisma Status  #########
+    
+    #########   START: Get zScaler Cloud Status  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "zScaler ZEN Cloud Status"})
     zs_core_services_url = 'https://trust.zscaler.com/api/cloud-status.json?_format=json&a=b'
-    
-    vprint("zScaler Cloud STATUS from: " + pUnderline(zs_core_services_url), H1)
-    
     zs_post_data = '{"cloud":"trust.zscaler.net","dateOffset":0,"requestType":"core_cloud_services"}'
     zs_query_params = {'_format': 'json', 'a': 'b'}
     zs_headers =  {'Content-type': 'application/json'}
-
+    zs_svc_array = []
     zscaler_health_request = requests.post(url = zs_core_services_url, data = zs_post_data, params=zs_query_params, headers=zs_headers)
-
     zs_data = zscaler_health_request.json()
-
     zscaler_severity = {}
+    
     for severity in zs_data['data']['severity']:
         zscaler_severity[severity['tid']] = severity['name']
 
@@ -946,18 +1118,24 @@ def go():
         if ('category' in zs_data['data'].keys()):
             for service in zs_data['data']['category'][0]['subCategory']:
                 if ('category_status' in service.keys()):
-                    vprint(service['name'] + " STATUS: " + pFail(zscaler_severity[service['category_status']['severityTid']] + "(" + service['category_status']['severityTid'] + ")"),B1)
-                    vprint(pUnderline(service['category_status']['ri_date'] + ": ") + pBold( service['category_status']['short_description']).replace("&nbsp;"," "), B2)
+                    zs_svc_array.append(
+                            [
+                        service['name'], 
+                        pFail(zscaler_severity[service['category_status']['severityTid']]) + ":" + service['category_status']['severityTid'], 
+                        pBold(service['category_status']['short_description']).replace("&nbsp;"," ")  
+                            ])
                 else:
-                    vprint(service['name'] + " STATUS: " +  pPass("GOOD"),B1)
-    vprint(END_SECTION)
-
-
-    ### Check MSFT Cloud Serivces status:
+                    zs_svc_array.append([service['name'], pPass("GOOD") , " "])
+    zs_svc_array.insert(0, [pUnderline("SERVICE"),pUnderline("STATUS"),pUnderline("DESCRIPTION")])
+    print_array.append({ style: T1, theader: "zScaler Cloud STATUS from: " + pUnderline("https://trust.zscaler.com/cloud-status"), data: zs_svc_array })
+    uprint(print_array)
+    #########   END: Get zScaler Cloud Status  #########
+    
+    #########   START: Check MSFT Cloud Serivces status  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "Microsoft Cloud STATUS" })
     ms_core_services_url = 'https://portal.office.com/api/servicestatus/index'
-    
-    vprint("Microsoft Cloud STATUS from: " + pUnderline(ms_core_services_url), H1)
-    
+    ms_svc_array = []
     ms_headers =  {'Content-type': 'application/json'}
     ms_health_request = requests.get(url = ms_core_services_url,  headers=ms_headers)
     ms_data = ms_health_request.json()
@@ -965,16 +1143,22 @@ def go():
     if ('Services' in ms_data.keys()):
         for service in ms_data['Services']:
             if (service['IsUp']):
-                vprint(service['Name'] + " STATUS: " + pPass("GOOD"), B1)
+                ms_svc_array.append([service['Name'], pPass("GOOD")])
             else:
-                vprint(service['Name'] + " STATUS: " + pFail("ISSUE DETECTED"), B1)
-    vprint(END_SECTION)
-
-    ### Check Google Cloud Serivces status:
+                ms_svc_array.append([service['Name'], pFail("ISSUE DETECTED")])
+    if (len(ms_svc_array) >= 1):
+        ms_svc_array.insert(0, [pUnderline("SERVICE"),pUnderline("STATUS")] )
+        print_array.append({ style: T1, theader: "Microsoft Cloud STATUS from: " + pUnderline("https://portal.office.com/servicestatus"), data: ms_svc_array })
+    else:
+        print_array.append({ style: B1, data:  "ERROR: No Microsoft Cloud Services Found" })
+    uprint(print_array)
+    #########   END: Check MSFT Cloud Serivces status  #########
+    
+    #########   START: Check GOOGLE Cloud Serivces status  #########
+    print_array.clear()
+    print_array.append({ style: P1, data: "GOOGLE Cloud STATUS" })
     google_core_services_url = 'https://www.google.com/appsstatus/json/en'
-    
-    vprint("Google Cloud STATUS from: " + pUnderline(google_core_services_url), H1)
-    
+    google_svc_array = []
     google_headers =  {'Content-type': 'application/json'}
     google_health_request = requests.get(url = google_core_services_url,  headers=google_headers)
     google_data = json.loads(google_health_request.text.replace("dashboard.jsonp(","").replace("});","}"))
@@ -982,24 +1166,36 @@ def go():
     google_service_list = {}
     for service in google_data['services']:
         google_service_list[service['id']] = service['name']
-
-    google_issue_count = 0
     for messages in google_data['messages']:
-        if (not(messages['resolved'])):
-            google_issue_count += 1
-            vprint(google_service_list[messages['service']] + " STATUS: " + pFail("ISSUE DETECTED"), B1)
-    if (google_issue_count == 0):
-        vprint(pPass("No unresolved google cloud issues detected"), B1)
-    vprint(END_SECTION)
+        if (not(messages['resolved'])):            
+            google_svc_array.append(   [  google_service_list[messages['service']], pFail("ISSUE DETECTED")  ])
+    
+    if (len(google_svc_array) >= 1):
+        google_svc_array.insert(0, [pUnderline("SERVICE"),pUnderline("STATUS")] )
+        print_array.append({ style: T1, theader: "GOOGLE Cloud STATUS from: " + pUnderline("https://portal.office.com/servicestatus"), data: google_svc_array })
+    else:
+        print_array.append({ style: B0, data:  pPass("GOOD") + ", No unresolved issues found!" })
+    uprint(print_array)
+    #########   END: Check GOOGLE Cloud Serivces status  #########
 
-    if (print_html):
-        html_buffer += "</html>"
-        print(html_buffer)
 
+
+    #########   Final Print cleanup  #########
+    
+
+    if (print_mode == "slack"):
+        print(slack_buffer)
+        print("]}") ##close slack block message
+    if (print_mode == "html"):
+        pass
+    if (print_mode == "console"):    
+        pass
+    return("DONE")
 
 def logout():
     print("Logging out")
     cgx_session.get.logout()
+
 if __name__ == "__main__":
     parse_arguments()
     authenticate()
